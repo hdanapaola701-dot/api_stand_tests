@@ -1,66 +1,55 @@
-# 🛒 Proyecto Urban Grocers - Pruebas Automatizadas de API 
+# 👤 Proyecto API Stand Tests 
 
-Urban Grocers es una aplicación orientada al comercio electrónico (*e-grocery*) y servicio de entrega de comestibles a domicilio. La plataforma permite a los usuarios crear cuentas, configurar perfiles, consultar la disponibilidad de inventario en almacenes urbanos, gestionar carritos de compra y organizar productos mediante la creación de kits temáticos personalizados.
+Urban Grocers es una plataforma integral diseñada para la planificación de movilidad urbana y la gestión de logística, permitiendo a los usuarios gestionar viajes y entregas en una interfaz unificada. Sus funcionalidades clave incluyen la configuración de perfiles, un selector modular de tarifas, reserva de vehículos en tiempo real, gestión de pagos y persistencia de datos para asegurar la consistencia del servicio. Para más detalles técnicos, consulte la documentación del proyecto Urban Grocers.
 
-El sistema backend procesa flujos transaccionales y la logística de preparación de pedidos (*picking*), respondiendo a través de una arquitectura cliente-servidor basada en microservicios y respuestas HTTP.
+El sistema backend procesa el registro y almacenamiento del cliente, respondiendo a través de una arquitectura cliente-servidor basada en microservicios e integrando bases de datos planas en formato CSV.
 
 ---
 
 ## 🎯 Objetivo del Proyecto
 
-La tarea principal de este proyecto consiste en **automatizar de forma íntegra las pruebas de la lista de comprobación (*checklist*) diseñada para el campo `name` en la solicitud de creación de un kit de productos**, con el fin de validar los límites lógicos, tipos de datos y restricciones del backend. Posteriormente, el código se despliega y carga en un repositorio de GitHub para su correspondiente control de versiones y envío formal a revisión técnica de calidad.
+Validar la estabilidad, lógica de negocio y seguridad del endpoint de creación de usuarios/as mediante la automatización de escenarios positivos y negativos para el parámetro **`firstName`**. El objetivo principal es garantizar que el backend responda con los códigos de estado correctos (`201 Created` / `400 Bad Request`) y asegurar la integridad de la base de datos verificando la inserción exacta del registro en el sistema de archivos del servidor.
 
 ---
 
 ## 🦹 Alcance de las pruebas
 
-Las pruebas cubren la verificación exhaustiva de los servicios REST API del servidor, incluyendo:
+Las pruebas cubren la verificación funcional de la API y la auditoría de persistencia en la base de datos:
 
-📍 **Gestión de Kits de Usuario (`/api/v1/kits`)**
-* Creación de kits con nombres válidos e inválidos (análisis de valores límite y particiones de equivalencia de strings).
-* Validación de estructuras JSON en solicitudes `POST` y persistencia de kits vinculados a usuarios específicos.
-* Verificación del comportamiento del servidor ante la omisión de campos obligatorios en el cuerpo de la petición.
+📍 **Validación de Parámetros en Registro (`/api/v1/users/`)**
+* Análisis de Valores Límite (BVA) y control de fronteras en el campo `firstName` aplicando casos lógicos para longitudes permitidas (2 y 15 caracteres) y longitudes inválidas (1 carácter).
+* Validación de la generación correcta y obligatoria del token de autenticación (`authToken`) tras un registro exitoso.
 
-Selector **Órdenes y Carritos de Compra (`/api/v1/orders`)**
-* Creación, edición y adición dinámica de productos a carritos activos por identificador (`id`) y cantidad.
-* Validación del cálculo económico total del carrito en función del catálogo de precios del backend.
+📊 **Verificación de Persistencia en Base de Datos (`user_model.csv`)**
+* Consulta directa y descarga en tiempo real del archivo de recursos del sistema (`/api/db/resources/user_model.csv`).
+* Validación mediante aserciones de cadena de texto para comprobar que el formato estructurado (`firstName,phone,address,,,,authToken`) se inyecte exactamente una sola vez en la base de datos del servidor, evitando registros duplicados o fantasmas.
 
-🔐 **Sincronización de Almacenes (`/api/v1/warehouses`)**
-* Consulta de disponibilidad de inventario en los diferentes almacenes centrales distribuidos por zonas.
-* Validación de la asignación automática de tiempos de preparación y costos de envío según el peso y tipo de orden.
-
-💳 **Validación de Códigos de Respuesta HTTP**
-* Verificación de la consistencia de respuestas esperadas para escenarios positivos (`200 OK`, `201 Created`).
-* Evaluación de control de excepciones y fronteras para escenarios negativos (`400 Bad Request`, `404 Not Found`).
-
-💬 **Integridad de Datos del Cliente (`/api/v1/users`)**
-* Flujo de registro de nuevos perfiles de usuario y adición de tokens de autenticación en los encabezados (*headers*) de las llamadas.
+💳 **Control de Excepciones y Respuestas HTTP**
+* Verificación de códigos de error `400 Bad Request` y correspondencia exacta de los mensajes de alerta devueltos por el backend ante entradas que violen el alfabeto latino o la longitud requerida.
 
 ---
 
 ## 🟣 Lógica de funcionamiento
 
-* En el estado inicial, las peticiones que carecen de un token de autenticación válido (`Authorization`) son rechazadas automáticamente por el servidor con un código `401 Unauthorized`.
-* La creación de un kit está restringida por la base de datos a un formato de nombre específico; strings vacíos o con longitudes que excedan los límites provocan fallas controladas en el backend.
-* El sistema calcula dinámicamente los costos de despacho en el momento en que se consulta el endpoint de la orden, basándose en la disponibilidad de stock en los almacenes más cercanos.
-* Cualquier modificación en la cantidad de productos de una orden actualiza síncronamente el cuerpo de la respuesta en formato JSON.
-* La base de datos mantiene la persistencia local de los kits, asegurando que un usuario solo pueda visualizar o editar las colecciones asociadas a su identificador único.
+* En el estado inicial, para que un usuario sea considerado válido por el sistema, su parámetro `firstName` debe estar compuesto estrictamente por caracteres latinos y poseer una longitud de 2 a 15 caracteres.
+* Tras un envío exitoso, el sistema genera de forma síncrona un código de estado `201` y un `authToken` no vacío.
+* Inmediatamente después de la confirmación, el servidor escribe en el archivo físico `user_model.csv` una nueva fila con la estructura de datos del usuario vinculada al token emitido.
+* Cualquier entrada fuera de los límites lógicos interrumpe la persistencia en la base de datos, deniega el registro, y retorna un JSON con un código de error de negocio interno `400` junto con un mensaje de validación instructivo.
 
 ## 🪶 Contenido del Proyecto
 
-Este proyecto contiene el desarrollo y la implementación del script automatizado `create_kit_test.py` encargado de ejecutar las aserciones de la lista de comprobación para el campo `name`. La estructura está desacoplada bajo buenas prácticas de ingeniería de software para aislar la conectividad de red de los datos de prueba.
+Este proyecto contiene el script de automatización avanzada `create_user_test.py`, desarrollado bajo buenas prácticas de ingeniería de calidad para desacoplar el cliente de peticiones de red de las aserciones de prueba y los esquemas lógicos de la base de datos.
 
 ### 📁 Estructura de Archivos
 ```plaintext
-qa-project-Urban-Grocers-es/
+qa-project-api-stand-tests/
 │
+├── .gitignore              # Evita que se carguen carpetas locales de caché y del sistema
 ├── README.md               # Documentación general y guía técnica del proyecto
-├── UrbanRoutesPage.py      # Implementación de clases de páginas y localizadores (Patrón POM)
-├── configuration.py        # Define las variables de entorno, puertos y rutas base de la API
-├── data.py                 # Almacena los diccionarios JSON, payloads y headers de prueba
-├── helpers.py              # Método auxiliar para la recuperación dinámica del código SMS
-├── sender_stand_request.py # Implementación de métodos HTTP (POST, GET, PUT) con requests
-└── create_kit_test.py      # Suite con los 9 casos de prueba que automatiza la lista de comprobación
+├── configuration.py        # Define la URL activa del servidor y las rutas CSV/Endpoints de la API
+├── create_user_test.py     # Suite de automatización de pruebas para firstName y validación de DB
+├── data.py                 # Almacena los payloads base y diccionarios JSON de prueba
+└── sender_stand_request.py # Implementación de métodos HTTP (POST, GET) con la librería requests
 ```
 
 ## 🧩 Tecnologías y Herramientas
@@ -68,75 +57,53 @@ qa-project-Urban-Grocers-es/
 * **Lenguaje principal de programación:** `python`
 * **Framework para pruebas automatizadas:** `pytest`
 * **Librerías de comunicación de red:** `requests`
-* **Pruebas y validaciones manuales de API:** `postman`
 * **Estructuras de intercambio de datos:** `json`
-* **Gestión de proyectos y seguimiento de defectos:** `jira`
-* **Control de versiones y almacenamiento de código:** `git` / `github`
-* **Análisis de red e inspección del backend:** `devtools` (Consola del navegador para análisis de logs y llamadas de red)
+* **Formatos de persistencia validados:** `csv` (Mapeo directo de la tabla de usuarios del servidor)
 
-### 🏷️ Métodos y Parámetros HTTP Validados
-* `POST /api/v1/users` para el registro inicial de credenciales.
-* `POST /api/v1/kits` para la inyección de colecciones de productos.
-* `GET /api/v1/warehouses` para la inspección y lectura de inventarios.
+### 🏷️ Endpoints y Rutas de Red Monitoreadas
+* `URL_SERVICE:` `https://tripleten-services.com`
+* `CREATE_USER_PATH:` `/api/v1/users/`
+* `USERS_TABLE_PATH:` `/api/db/resources/user_model.csv`
+* `DOC_PATH:` `/docs/`
+* `LOG_MAIN_PATH:` `/api/logs/main/`
+* `PRODUCTS_KITS_PATH:` `/api/v1/products/kits/`
 
 ---
 
 ## 🪄 Enfoque de testing
 
-El enfoque principal del proyecto está centrado en la **automatización funcional de Caja Negra a nivel de API**, traduciendo una lista de comprobación de diseño manual a código ejecutable mediante Pytest. 
+El enfoque de este proyecto combina las pruebas de API funcionales de Caja Negra con **pruebas de integración para la validación de persistencia de datos**, rompiendo el aislamiento tradicional del testing de endpoints básicos.
 
 Incluye:
-* **Pruebas de Frontera y Tipos de Datos:** Validación de las longitudes límites de caracteres del campo `name` (1, 511, 512 caracteres), inyección de caracteres especiales, manejo de espacios intermedios y control de tipos erróneos (valores numéricos en lugar de strings).
-* **Gestión Dinámica de Dependencias:** El script implementa un flujo automatizado para registrar un usuario de prueba en cada ciclo, capturar dinámicamente su token único de autorización (`authToken`) desde la respuesta del servidor e inyectarlo en los *Headers* HTTP antes de disparar la validación del kit.
-* **Aislamiento de Infraestructura:** Separación modular de la lógica web en un cliente de peticiones independiente (`sender_stand_request.py`) para asegurar que la suite sea escalable ante futuros cambios en los endpoints.
+* **Estrategia Dual de Aserción:** Validación simultánea de la respuesta en la capa de transporte (Código HTTP y JSON) y de la inserción en la capa de datos (Búsqueda en la tabla CSV mediante conteo de ocurrencias exactas).
+* **Análisis de Valores Límite Avanzado:** Pruebas controladas simulando nombres reales como ` DanaPaolaSantos ` (límite exacto superior de 15 caracteres) o combinaciones mínimas como ` Aa ` (límite inferior de 2 caracteres) para auditar la precisión matemática de las restricciones de los strings.
+* **Aislamiento Funcional mediante Helper:** Creación de una función constructora dinámica (`get_user_body`) que clona el payload base y modifica el parámetro necesario en tiempo de ejecución para mantener pruebas limpias e independientes.
 
 ## ⚡ Aspectos destacados
 
-* **Validación rigurosa de respuestas:** Comprobación dual que audita tanto el código de estado HTTP (`status_code`) como el contenido del objeto JSON devuelto.
-* **Manejo eficiente de asincronía:** Scripts que realizan peticiones de forma secuencial y limpia, asegurando que la creación del usuario ocurra y devuelva su ID antes de intentar inyectar un kit.
-* **Cero dependencias estáticas:** Uso de métodos que modifican los payloads dinámicamente en tiempo de ejecución, evitando la colisión de datos duplicados en el servidor.
-* **Alta mantenibilidad:** Centralización completa de rutas y configuraciones de red, lo que permite migrar las pruebas de un entorno de *Staging* a *Producción* modificando una sola línea.
+* **Garantía Real de Persistencia:** Las pruebas no asumen que el software funciona porque responde `201`; confirman el almacenamiento real en el disco del servidor mediante `get_users_table()`.
+* **Seguridad Antiduplicados:** Validación rigurosa que asegura que cada registro se inserte exactamente una sola vez (`count(str_user) == 1`), previniendo fugas de datos o inyecciones masivas.
+* **Robustez en Mensajes de Error:** Auditoría del texto exacto del string de error devuelto por la API para asegurar que las excepciones del backend sean amigables e informativas para el usuario.
 
 ## 🎯 Objetivo
 
-Garantizar que la API de Urban Grocers sea robusta, segura y confiable, asegurando que la lógica transaccional del backend responda con total precisión matemática y devuelva mensajes de error limpios y controlados ante cualquier entrada inválida del cliente.
+Asegurar que el flujo de registro de la plataforma funcione de manera impecable, robusta y altamente confiable, garantizando que el backend filtre de forma segura los datos inválidos y registre con total precisión matemática y física a los nuevos usuarios en el sistema.
 
 ---
 
 ## 🚀 Instrucciones de Ejecución
 
 ### Prerrequisitos
-Antes de iniciar, asegúrate de contar con:
-1. Python 3.x instalado en tu entorno local.
-2. Acceso al servidor activo o contenedor del backend de Urban Grocers.
+Asegúrate de contar con Python 3.x instalado de forma local.
 
 ### Instalación de Dependencias
-Prepara el entorno instalando las librerías necesarias con el siguiente comando en tu terminal:
+Prepara tu entorno de comandos ejecutando:
 ```bash
-pip install requests pytest
+pip install pytest requests
 ```
 
 ### Ejecución de la Suite
-* **Ejecutar las pruebas automáticas de la API:**
+* **Ejecutar las pruebas lógicas y de base de datos de forma automática:**
   ```bash
-  pytest create_kit_test.py
+  pytest
   ```
-* **Ejecutar con salida detallada (Verbose):**
-  ```bash
-  pytest -v create_kit_test.py
-  ```
-
----
-
-## 🧠 Retos Técnicos y Soluciones
-
-* 🧩 **Tokens Dinámicos Obligatorios:** Los endpoints de creación de kits fallaban si el token de usuario expiraba o cambiaba. Se solucionó creando una función inicial que registra un usuario aleatorio en cada ejecución, recupera el token del cuerpo de la respuesta y lo inyecta automáticamente en los cabezales (`headers`) de los siguientes tests.
-* 🛑 **Fronteras en Strings Complejos:** La validación de caracteres especiales u orientales provocaba inconsistencias de codificación (`UTF-8`). Se solucionó forzando la conversión explícita del diccionario a JSON string con el método `json.dumps(payload)` antes de transmitir la petición.
-* ⌛ **Manejo de Respuestas Vacías (Null Responses):** Al enviar peticiones de error, el servidor respondía sin cuerpo JSON, rompiendo los métodos de aserción estándar de Python. Se implementó una cláusula condicional previa que valida si la longitud del texto de respuesta es mayor a cero antes de intentar decodificar el objeto JSON.
-
-
-## 🎯 Conclusión del Proyecto & Lecciones Aprendidas
-
-Este proyecto de *Urban Grocers* consolidó mi entendimiento sobre la arquitectura cliente-servidor y el ciclo de vida de los datos en el backend. Validar APIs me enseñó que la calidad del software va mucho más allá de lo que el usuario ve en la pantalla. 
-
-Dominar las aserciones sobre respuestas JSON con **Python Requests** y cruzar esa información mediante consultas **SQL** directo en la base de datos me otorgó una perspectiva técnica profunda sobre la persistencia y seguridad de la información. Estas competencias en backend son el pilar que me prepara para auditar con total seguridad sistemas multimedia complejos como el envío y recepción de telemetría o datos de usuario en **servicios de streaming y videojuegos**. 🐌🚀
