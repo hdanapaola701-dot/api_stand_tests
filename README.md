@@ -1,4 +1,4 @@
-# 🛒 Proyecto Urban Grocers - Pruebas Automatizadas de API (Sprint 3)
+# 🛒 Proyecto Urban Grocers - Pruebas Automatizadas de API 
 
 Urban Grocers es una aplicación orientada al comercio electrónico (*e-grocery*) y servicio de entrega de comestibles a domicilio. La plataforma permite a los usuarios crear cuentas, configurar perfiles, consultar la disponibilidad de inventario en almacenes urbanos, gestionar carritos de compra y organizar productos mediante la creación de kits temáticos personalizados.
 
